@@ -1,0 +1,76 @@
+version: '3'
+services:
+  web:
+    image: webdevops/php-apache-dev:7.4-alpine
+    container_name: web
+    restart: always
+    user: application
+    environment:
+      - WEB_ALIAS_DOMAIN=magento2.local
+      - WEB_DOCUMENT_ROOT=/app/pub
+      - PHP_DATE_TIMEZONE=EST
+      - PHP_DISPLAY_ERRORS=1
+      - PHP_MEMORY_LIMIT=4G
+      - PHP_MAX_EXECUTION_TIME=3600
+      - PHP_POST_MAX_SIZE=500M
+      - PHP_UPLOAD_MAX_FILESIZE=1024M
+    volumes:
+      - ./www:/app:cached
+    ports:
+      - "80:80"
+      - "443:443"
+      - "32823:22"
+    links:
+      - mysql
+  mysql:
+    image: mysql:8.0
+    container_name: mysqlWLB
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=wlb
+    volumes:
+      - db-data:/var/lib/mysql
+  phpmyadmin:
+    container_name: phpmyadmin
+    restart: always
+    image: phpmyadmin/phpmyadmin:latest
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - PMA_USER=root
+      - PMA_PASSWORD=root
+    ports:
+      - "8080:80"
+    links:
+      - mysql:db
+    depends_on:
+      - mysql
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.9.3
+    container_name: elasticsearchWLB
+    environment:
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+      - 9300:9300
+
+volumes:
+  elasticsearch-data:
+    driver: local
+  db-data:
+    external: false
+
